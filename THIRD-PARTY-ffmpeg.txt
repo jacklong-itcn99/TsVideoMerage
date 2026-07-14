@@ -5,8 +5,9 @@
 -----------
 - 官网 / 源码:https://ffmpeg.org/
 - FFmpeg 由其各自作者版权所有,依 GPL/LGPL 授权。
-- 本软件随附的静态构建来自 https://github.com/eugeneware/ffmpeg-static
-  (底层为 https://github.com/BtbN/FFmpeg-Builds 的 GPL 构建)。
+- 本软件随附的静态构建来源:
+    Windows / Linux —— https://github.com/BtbN/FFmpeg-Builds (GPL)
+    macOS           —— https://github.com/eugeneware/ffmpeg-static
 - 对应版本的完整源码可从 https://ffmpeg.org/download.html 获取。
 
 与本软件的关系

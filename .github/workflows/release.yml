@@ -1,5 +1,8 @@
 # 一次打 v* 标签,自动构建 Windows / macOS / Linux 三端包(均内置 ffmpeg),并创建 GitHub Release。
 # 也可在 Actions 页面手动运行(workflow_dispatch)只出三端产物、不发 Release。
+#
+# ffmpeg 来源:Windows/Linux 用 BtbN 静态构建;macOS 用 ffmpeg-static(BtbN 无 mac)。
+# 每个能执行的平台都在打包前做冒烟测试:内置 ffmpeg 必须能真跑转封装,否则构建失败。
 name: release
 
 on:
@@ -8,15 +11,14 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write # 创建 Release 需要写权限
+  contents: write
 
 env:
-  # 内置的 ffmpeg 静态构建版本(覆盖 win/linux/mac 各架构),来源见 THIRD-PARTY-ffmpeg.txt
-  FFMPEG_TAG: b6.1.1
-  FFMPEG_BASE: https://github.com/eugeneware/ffmpeg-static/releases/download
+  BTBN_BASE: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest
+  FFSTATIC_BASE: https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1
 
 jobs:
-  # ---------- Windows:mingw 交叉编译,打成含 ffmpeg 的 zip ----------
+  # ---------- Windows:mingw 交叉编译,内置 BtbN ffmpeg,打成 zip ----------
   windows:
     runs-on: ubuntu-latest
     steps:
@@ -33,11 +35,13 @@ jobs:
           GOARCH: amd64
           CC: x86_64-w64-mingw32-gcc
         run: go build -ldflags "-H windowsgui -s -w" -o tsmerge.exe .
-      - name: 下载 ffmpeg 并打包
+      - name: 取 ffmpeg.exe 并打包
         run: |
-          curl -fL -o ffmpeg.exe "${FFMPEG_BASE}/${FFMPEG_TAG}/ffmpeg-win32-x64"
+          curl -fL -o ff.zip "${BTBN_BASE}/ffmpeg-master-latest-win64-gpl.zip"
+          unzip -q ff.zip
+          FF=$(find . -name ffmpeg.exe -path "*/bin/*" | head -1)
           mkdir -p tsmerge-windows-amd64
-          cp tsmerge.exe ffmpeg.exe THIRD-PARTY-ffmpeg.txt tsmerge-windows-amd64/
+          cp tsmerge.exe "$FF" THIRD-PARTY-ffmpeg.txt tsmerge-windows-amd64/
           zip -r tsmerge-windows-amd64.zip tsmerge-windows-amd64
       - uses: actions/upload-artifact@v4
         with:
@@ -59,11 +63,16 @@ jobs:
           lipo -create -output tsmerge tsmerge-arm64 tsmerge-amd64
       - name: 下载并合成通用 ffmpeg
         run: |
-          curl -fL -o ff-arm64 "${FFMPEG_BASE}/${FFMPEG_TAG}/ffmpeg-darwin-arm64"
-          curl -fL -o ff-x64   "${FFMPEG_BASE}/${FFMPEG_TAG}/ffmpeg-darwin-x64"
+          curl -fL -o ff-arm64 "${FFSTATIC_BASE}/ffmpeg-darwin-arm64"
+          curl -fL -o ff-x64   "${FFSTATIC_BASE}/ffmpeg-darwin-x64"
           lipo -create -output ffmpeg ff-arm64 ff-x64
           chmod +x ffmpeg
           file ffmpeg
+      - name: 冒烟测试内置 ffmpeg(转封装必须成功)
+        run: |
+          ./ffmpeg -y -f lavfi -i testsrc=duration=1:size=160x120:rate=10 -f mpegts smoke.ts -loglevel error
+          ./ffmpeg -y -i smoke.ts -c copy -movflags +faststart smoke.mp4 -loglevel error
+          test -s smoke.mp4 && echo "✓ mac 内置 ffmpeg 可转封装"
       - name: 打包 .app(内置 ffmpeg)
         run: |
           go install fyne.io/tools/cmd/fyne@latest
@@ -84,7 +93,7 @@ jobs:
           name: macos
           path: TSMerge-macos-universal.dmg
 
-  # ---------- Linux:CGO 原生编译,fyne 打包后注入 ffmpeg 再压缩 ----------
+  # ---------- Linux:CGO 原生编译,内置 BtbN ffmpeg,注入 tar ----------
   linux:
     runs-on: ubuntu-latest
     steps:
@@ -97,15 +106,22 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev
+      - name: 取 ffmpeg 并冒烟测试
+        run: |
+          curl -fL -o ff.tar.xz "${BTBN_BASE}/ffmpeg-master-latest-linux64-gpl.tar.xz"
+          mkdir ffdir && tar xJf ff.tar.xz -C ffdir
+          cp "$(find ffdir -name ffmpeg -path '*/bin/*' | head -1)" ffmpeg
+          chmod +x ffmpeg
+          ./ffmpeg -y -f lavfi -i testsrc=duration=1:size=160x120:rate=10 -f mpegts smoke.ts -loglevel error
+          ./ffmpeg -y -i smoke.ts -c copy -movflags +faststart smoke.mp4 -loglevel error
+          test -s smoke.mp4 && echo "✓ linux 内置 ffmpeg 可转封装"
       - name: fyne 打包并注入 ffmpeg
         run: |
           go install fyne.io/tools/cmd/fyne@latest
           "$(go env GOPATH)/bin/fyne" package -os linux \
             --name TSMerge --app-id com.example.tsmerge --icon icon.png
-          curl -fL -o ffmpeg "${FFMPEG_BASE}/${FFMPEG_TAG}/ffmpeg-linux-x64"
-          chmod +x ffmpeg
           mkdir extract && tar xJf ./*.tar.xz -C extract
-          TOP=$(ls extract)                       # fyne 生成的顶层目录名
+          TOP=$(ls extract)
           cp ffmpeg "extract/$TOP/usr/local/bin/ffmpeg"
           cp THIRD-PARTY-ffmpeg.txt "extract/$TOP/"
           tar cJf tsmerge-linux-amd64.tar.xz -C extract "$TOP"
