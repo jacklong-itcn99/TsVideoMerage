@@ -47,6 +47,7 @@ jobs:
         with:
           name: windows
           path: tsmerge-windows-amd64.zip
+          retention-days: 1 # 仅供同次运行的 release 汇总用,次日自动清理
 
   # ---------- macOS:通用二进制 + 通用 ffmpeg 装进 .app,打成 .dmg ----------
   macos:
@@ -92,6 +93,7 @@ jobs:
         with:
           name: macos
           path: TSMerge-macos-universal.dmg
+          retention-days: 1
 
   # ---------- Linux:CGO 原生编译,内置 BtbN ffmpeg,注入 tar ----------
   linux:
@@ -130,6 +132,7 @@ jobs:
         with:
           name: linux
           path: tsmerge-linux-amd64.tar.xz
+          retention-days: 1
 
   # ---------- 汇总三端产物,创建 Release(仅打标签时)----------
   release:
