@@ -50,7 +50,7 @@ func BuildRoot(w fyne.Window, initialFiles []string, th *appTheme) fyne.CanvasOb
 
 	files := append([]string(nil), initialFiles...)
 	selected := -1
-	ffmpegPath := merger.FindFFmpeg()
+	ffmpegReady := merger.HasFFmpeg()
 
 	status := newMuted("请添加 .ts 分段,顺序很重要", 12)
 
@@ -164,10 +164,10 @@ func BuildRoot(w fyne.Window, initialFiles []string, th *appTheme) fyne.CanvasOb
 
 	// 输出选项。
 	toMP4 := widget.NewCheck("合并后转成 MP4(兼容性更好)", nil)
-	mp4Hint := newMuted("已检测到 ffmpeg,可勾选转成 mp4", 12)
-	if ffmpegPath == "" {
+	mp4Hint := newMuted("转 mp4 已就绪(程序已内置 ffmpeg)", 12)
+	if !ffmpegReady {
 		toMP4.Disable()
-		mp4Hint = newMuted("未检测到 ffmpeg,把 ffmpeg.exe 放到本程序旁即可启用 mp4", 12)
+		mp4Hint = newMuted("未找到 ffmpeg,无法转 mp4(可把 ffmpeg 放到本程序旁)", 12)
 	}
 
 	progress := widget.NewProgressBar()
@@ -189,7 +189,7 @@ func BuildRoot(w fyne.Window, initialFiles []string, th *appTheme) fyne.CanvasOb
 			}
 			outPath := wc.URI().Path()
 			wc.Close() // 用自己的文件句柄写,关掉对话框给的空文件
-			go runMerge(w, mergeBtn, progress, status, files, outPath, toMP4.Checked, ffmpegPath)
+			go runMerge(w, mergeBtn, progress, status, files, outPath, toMP4.Checked)
 		}, w)
 		save.SetFileName(defaultName)
 		save.Show()
@@ -257,7 +257,7 @@ func BuildRoot(w fyne.Window, initialFiles []string, th *appTheme) fyne.CanvasOb
 
 // runMerge 在后台执行拼接(以及可选的 mp4 转封装),并把进度/结果安全地刷回 UI。
 func runMerge(w fyne.Window, btn *widget.Button, progress *widget.ProgressBar, status *canvas.Text,
-	files []string, outPath string, wantMP4 bool, ffmpegPath string) {
+	files []string, outPath string, wantMP4 bool) {
 
 	fyne.Do(func() {
 		btn.Disable()
@@ -306,7 +306,12 @@ func runMerge(w fyne.Window, btn *widget.Button, progress *widget.ProgressBar, s
 
 	if wantMP4 {
 		fyne.Do(func() { setText(status, "拼接完成,正在用 ffmpeg 转封装 MP4…") })
-		if err := merger.RemuxToMP4(ffmpegPath, tmpTS, outPath); err != nil {
+		ffmpeg := merger.ResolveFFmpeg() // 首次会把内置 ffmpeg 解压到缓存目录
+		if ffmpeg == "" {
+			finish(w, btn, progress, status, "", fmt.Errorf("找不到 ffmpeg,无法转 mp4"))
+			return
+		}
+		if err := merger.RemuxToMP4(ffmpeg, tmpTS, outPath); err != nil {
 			finish(w, btn, progress, status, "", err)
 			return
 		}

@@ -28,25 +28,24 @@ jobs:
           go-version: "1.24"
       - name: 安装 mingw 交叉编译器
         run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
-      - name: 交叉编译 tsmerge.exe
+      - name: 内置 ffmpeg 并编译成单文件 exe
         env:
           CGO_ENABLED: "1"
           GOOS: windows
           GOARCH: amd64
           CC: x86_64-w64-mingw32-gcc
-        run: go build -ldflags "-H windowsgui -s -w" -o tsmerge.exe .
-      - name: 取 ffmpeg.exe 并打包
         run: |
+          # 取 ffmpeg.exe,gzip 后放到 embed 目录,-tags embedffmpeg 把它编进单个 exe
           curl -fL -o ff.zip "${BTBN_BASE}/ffmpeg-master-latest-win64-gpl.zip"
           unzip -q ff.zip
-          FF=$(find . -name ffmpeg.exe -path "*/bin/*" | head -1)
-          mkdir -p tsmerge-windows-amd64
-          cp tsmerge.exe "$FF" THIRD-PARTY-ffmpeg.txt tsmerge-windows-amd64/
-          zip -r tsmerge-windows-amd64.zip tsmerge-windows-amd64
+          mkdir -p merger/ffmpeg-bin
+          gzip -c "$(find . -name ffmpeg.exe -path '*/bin/*' | head -1)" > merger/ffmpeg-bin/ffmpeg.exe.gz
+          go build -tags embedffmpeg -ldflags "-H windowsgui -s -w" -o tsmerge-windows-amd64.exe .
+          ls -lh tsmerge-windows-amd64.exe
       - uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: tsmerge-windows-amd64.zip
+          path: tsmerge-windows-amd64.exe
           retention-days: 1 # 仅供同次运行的 release 汇总用,次日自动清理
 
   # ---------- macOS:通用二进制 + 通用 ffmpeg 装进 .app,打成 .dmg ----------
@@ -156,9 +155,9 @@ jobs:
 
             | 平台 | 文件 |
             |---|---|
-            | Windows 64 位 | `tsmerge-windows-amd64.zip`(解压后双击 tsmerge.exe) |
+            | Windows 64 位 | `tsmerge-windows-amd64.exe`(单文件,已内置 ffmpeg,双击即用) |
             | macOS(Intel + Apple Silicon) | `TSMerge-macos-universal.dmg` |
             | Linux 64 位 | `tsmerge-linux-amd64.tar.xz` |
 
             macOS 未签名,首次打开右键→打开,或 `xattr -cr TSMerge.app`。
-            内置 ffmpeg 为 GPL 构建,详见包内 `THIRD-PARTY-ffmpeg.txt`。
+            内置 ffmpeg 为 GPL 构建;许可与源码见仓库 `THIRD-PARTY-ffmpeg.txt`(mac/Linux 包内亦附)。

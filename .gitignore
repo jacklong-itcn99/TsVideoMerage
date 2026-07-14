@@ -12,3 +12,6 @@
 
 # 下载的 CI 产物
 /dist/
+
+# CI 构建时临时放入的内置 ffmpeg(不入库)
+/merger/ffmpeg-bin/

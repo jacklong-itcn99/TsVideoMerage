@@ -108,6 +108,22 @@ func FindFFmpeg() string {
 	return ""
 }
 
+// HasFFmpeg 便宜地判断是否有可用的 ffmpeg(内置的或系统/同目录的),供 UI 决定
+// 是否启用 mp4 选项。它不做解压,因此可在启动时反复调用而无副作用。
+func HasFFmpeg() bool {
+	return len(embeddedFFmpeg) > 0 || FindFFmpeg() != ""
+}
+
+// ResolveFFmpeg 返回一个可执行的 ffmpeg 路径,供转封装前调用:
+// 优先解压内置的那份(单文件发行版),否则回落到同目录 / 系统 PATH。
+// 内置存在时会在首次调用时把 ffmpeg 解压到缓存目录(之后复用)。
+func ResolveFFmpeg() string {
+	if p := extractEmbeddedFFmpeg(); p != "" {
+		return p
+	}
+	return FindFFmpeg()
+}
+
 // RemuxToMP4 用 ffmpeg 把已拼接好的 .ts 无损重封装成 mp4(-c copy,不重新编码,秒级完成)。
 // 现代 ffmpeg 会在需要时自动插入 AAC 比特流过滤器,因此一般无需额外参数。
 func RemuxToMP4(ffmpeg, inTS, outMP4 string) error {

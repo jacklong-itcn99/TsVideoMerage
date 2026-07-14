@@ -14,8 +14,8 @@
 - 合并时显示 **进度条**(按已处理字节数实时更新)
 - 纯 Go 二进制拼接 → 输出 `.ts`,**零外部依赖**
 - 勾选「转成 MP4」→ 用 ffmpeg 无损转封装(`-c copy`,不重新编码,秒级),兼容性最好
-  - **发行包(Release)已内置 ffmpeg,开箱即用,无需另装**;程序优先用同目录内置的那份,
-    找不到才回落到系统 PATH 的 ffmpeg,都没有时自动禁用该选项
+  - **发行包(Release)已内置 ffmpeg,开箱即用,无需另装**:Windows 直接编进单个 exe(首次用到时
+    自动解压到缓存),macOS 装在 `.app` 包内,Linux 随 tar 附带;都找不到才回落到系统 PATH,再没有则禁用该选项
 - 右上角**主题切换**:跟随系统 / 浅色 / 深色,「跟随系统」会随 OS 深浅设置实时切换
 
 ## 目录结构
@@ -62,7 +62,7 @@ git tag -a v0.2.0 -m "发布说明" && git push origin v0.2.0
 
 | 平台 | 产物 | 怎么构建的 |
 |---|---|---|
-| Windows 64 位 | `tsmerge-windows-amd64.exe` | Linux runner + mingw 交叉编译 |
+| Windows 64 位 | `tsmerge-windows-amd64.exe`(单文件,ffmpeg 已编入) | Linux runner + mingw 交叉编译,`-tags embedffmpeg` |
 | macOS(通用) | `TSMerge-macos-universal.dmg` | macOS runner,arm64+amd64 合并,打 .dmg |
 | Linux 64 位 | `tsmerge-linux-amd64.tar.xz` | Linux runner,fyne 打包 |
 
