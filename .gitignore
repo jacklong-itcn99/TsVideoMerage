@@ -9,3 +9,6 @@
 # 系统/临时
 .DS_Store
 *.out
+
+# 下载的 CI 产物
+/dist/
