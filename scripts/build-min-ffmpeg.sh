@@ -30,6 +30,7 @@ COMMON=(
 if [ ! -d "$SRC" ]; then
   curl -fsSL -o "${SRC}.tar.xz" "https://ffmpeg.org/releases/${SRC}.tar.xz"
   tar xf "${SRC}.tar.xz"
+  rm -f "${SRC}.tar.xz" # 删掉源码 tar,免得后续 *.tar.xz 通配到它
 fi
 
 CALLER="$PWD"
