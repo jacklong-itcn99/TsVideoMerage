@@ -33,7 +33,9 @@ tsmerge/
 │   ├── merger_test.go         # 拼接字节无损、进度回调等单元测试
 │   ├── sort_test.go
 │   └── integration_test.go    # 端到端:真实 TS 分段 → 合并 → ffprobe 验证可播放
-├── icon.png                   # 应用图标(打包 macOS .app 用,可自行替换)
+├── icon.png                   # 应用图标源(窗口/任务栏、mac .app、Linux .desktop 都用它)
+├── icon.ico                   # 由 icon.png 生成的多分辨率图标(Windows 用)
+├── rsrc_windows_amd64.syso    # Windows exe 文件图标资源,go build 自动链入(由 icon.ico 生成)
 ├── build-windows.sh           # 交叉编译成 Windows .exe(在 Linux/WSL 上)
 ├── build-macos.sh             # 在 macOS 上构建通用二进制 + .app
 ├── .github/workflows/

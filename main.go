@@ -4,17 +4,26 @@
 package main
 
 import (
+	_ "embed"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/theme"
 
 	"tsmerge/ui"
 )
 
+// 应用图标(窗口 / 任务栏)。Windows 的 exe 文件图标另由 rsrc_windows_amd64.syso 提供。
+//
+//go:embed icon.png
+var iconPNG []byte
+
 func main() {
 	a := app.New()
+	icon := fyne.NewStaticResource("icon.png", iconPNG)
+	a.SetIcon(icon)
+
 	w := a.NewWindow("TS 视频合并工具")
-	w.SetIcon(theme.MediaVideoIcon())
+	w.SetIcon(icon)
 	w.Resize(fyne.NewSize(660, 700))
 	w.SetContent(ui.BuildRoot(w, nil, ui.NewAppTheme()))
 	w.ShowAndRun()
