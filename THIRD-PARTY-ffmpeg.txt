@@ -1,0 +1,18 @@
+本软件随附了 FFmpeg 的预编译可执行文件(ffmpeg / ffmpeg.exe),用于把合并后的
+.ts 视频无损转封装成 .mp4。
+
+关于 FFmpeg
+-----------
+- 官网 / 源码:https://ffmpeg.org/
+- FFmpeg 由其各自作者版权所有,依 GPL/LGPL 授权。
+- 本软件随附的静态构建来自 https://github.com/eugeneware/ffmpeg-static
+  (底层为 https://github.com/BtbN/FFmpeg-Builds 的 GPL 构建)。
+- 对应版本的完整源码可从 https://ffmpeg.org/download.html 获取。
+
+与本软件的关系
+--------------
+本软件(tsmerge)通过启动独立进程的方式调用 ffmpeg,并非静态/动态链接,
+因此二者是"聚合"关系而非派生作品。FFmpeg 的授权仅约束其自身二进制的再分发,
+不影响 tsmerge 本体的授权。
+
+FFmpeg 的 GPL/LGPL 许可证全文见:https://www.gnu.org/licenses/

@@ -2,7 +2,7 @@
 
 用 Go + [Fyne](https://fyne.io/) 写的小工具:把一堆 `.ts`(MPEG-TS 视频分段,
 常见于 M3U8 / HLS 下载)**二进制拼接**成一个可播放的视频,带进度条;
-若系统装了 ffmpeg,还能顺手转封装成 `.mp4`。
+还能顺手转封装成 `.mp4`(发行包已内置 ffmpeg,开箱即用)。
 
 > ⚠ `.ts` 在这里指 **MPEG 传输流视频**,不是 TypeScript 源码。视频必须逐字节
 > 拼接,不能当文本处理,否则会损坏数据、导致无法播放。
@@ -14,7 +14,8 @@
 - 合并时显示 **进度条**(按已处理字节数实时更新)
 - 纯 Go 二进制拼接 → 输出 `.ts`,**零外部依赖**
 - 勾选「转成 MP4」→ 用 ffmpeg 无损转封装(`-c copy`,不重新编码,秒级),兼容性最好
-  - 未检测到 ffmpeg 时该选项自动禁用
+  - **发行包(Release)已内置 ffmpeg,开箱即用,无需另装**;程序优先用同目录内置的那份,
+    找不到才回落到系统 PATH 的 ffmpeg,都没有时自动禁用该选项
 - 右上角**主题切换**:跟随系统 / 浅色 / 深色,「跟随系统」会随 OS 深浅设置实时切换
 
 ## 目录结构
@@ -69,7 +70,7 @@ git tag -a v0.2.0 -m "发布说明" && git push origin v0.2.0
 
 > ⚠ Fyne 的 macOS/Linux 版必须在对应系统上构建(要 CGO + 系统框架),**无法从别的系统交叉编译**;
 > 只有 Windows 版能用 mingw 交叉编。这也是用云端 CI 的原因。
-> macOS 未签名,首次打开右键→「打开」或 `xattr -cr TSMerge.app`;转 mp4 用 `brew install ffmpeg`。
+> macOS 未签名,首次打开右键→「打开」或 `xattr -cr TSMerge.app`(会一并解除内置 ffmpeg 的隔离标记)。
 
 ### 本地手动构建(单平台)
 
@@ -78,14 +79,14 @@ git tag -a v0.2.0 -m "发布说明" && git push origin v0.2.0
 ./build-macos.sh      # 在 macOS 上构建通用二进制 + TSMerge.app(需 fyne CLI)
 ```
 
-### 在 Windows 上启用 MP4 转换
+### 关于内置 ffmpeg
 
-工具会在 **PATH** 和 **自身所在目录** 里找 `ffmpeg.exe`。任选其一:
+发行包三端都**内置了 ffmpeg**(放在程序同目录 / `.app` 内),转 mp4 开箱即用,无需另装。
+内置的是来自 [ffmpeg-static](https://github.com/eugeneware/ffmpeg-static) 的 GPL 静态构建,
+许可与源码获取途径见包内 `THIRD-PARTY-ffmpeg.txt`。代价是发行包体积约增大到 ~100MB。
 
-- 从 https://www.gyan.dev/ffmpeg/builds/ 下载,把 `ffmpeg.exe` 放到 `tsmerge.exe` 旁边;
-- 或把 ffmpeg 加进系统 PATH。
-
-放好后重启工具,「转成 MP4」选项即可勾选。
+从**源码本地构建**(`build-*.sh`)不会带 ffmpeg——此时程序会回落到系统 PATH 的 ffmpeg,
+自己 `brew/apt install ffmpeg` 或把 `ffmpeg` 放到可执行文件旁即可。
 
 ### 运行测试
 

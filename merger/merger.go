@@ -89,12 +89,10 @@ func concat(paths []string, out io.Writer, total int64, onProgress ProgressFunc)
 	return done, nil
 }
 
-// FindFFmpeg 依次在 PATH、程序所在目录中查找 ffmpeg 可执行文件;找不到返回空串。
-// 这样用户既可全局安装,也可把 ffmpeg.exe 直接放到本工具旁边。
+// FindFFmpeg 查找 ffmpeg 可执行文件;找不到返回空串。
+// 优先用与程序捆绑在同一目录的 ffmpeg(发行包里带的那份,保证可用),
+// 其次回落到系统 PATH(用户自己装的)。
 func FindFFmpeg() string {
-	if p, err := exec.LookPath("ffmpeg"); err == nil {
-		return p
-	}
 	if exe, err := os.Executable(); err == nil {
 		dir := filepath.Dir(exe)
 		for _, name := range []string{"ffmpeg.exe", "ffmpeg"} {
@@ -103,6 +101,9 @@ func FindFFmpeg() string {
 				return cand
 			}
 		}
+	}
+	if p, err := exec.LookPath("ffmpeg"); err == nil {
+		return p
 	}
 	return ""
 }
