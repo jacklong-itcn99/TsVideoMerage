@@ -1,19 +1,18 @@
-本软件随附了 FFmpeg 的预编译可执行文件(ffmpeg / ffmpeg.exe),用于把合并后的
-.ts 视频无损转封装成 .mp4。
+本软件随附了一个从官方源码现编的"极简 FFmpeg"可执行文件(ffmpeg / ffmpeg.exe),
+仅用于把合并后的 .ts 视频无损转封装(-c copy)成 .mp4。
 
-关于 FFmpeg
------------
-- 官网 / 源码:https://ffmpeg.org/
-- FFmpeg 由其各自作者版权所有,依 GPL/LGPL 授权。
-- 本软件随附的静态构建来源:
-    Windows / Linux —— https://github.com/BtbN/FFmpeg-Builds (GPL)
-    macOS           —— https://github.com/eugeneware/ffmpeg-static
-- 对应版本的完整源码可从 https://ffmpeg.org/download.html 获取。
+关于内置的 FFmpeg
+-----------------
+- 官网 / 源码:https://ffmpeg.org/  下载:https://ffmpeg.org/download.html
+- 版本:FFmpeg 7.0.2,源码 tar 包:https://ffmpeg.org/releases/ffmpeg-7.0.2.tar.xz
+- 授权:本内置构建为 **LGPL v2.1 或更高**(已禁用全部 GPL 组件,如 x264/x265)。
+- 构建方式:未修改官方源码,仅用最小化的 ./configure 选项裁剪功能
+  (只保留 mpegts 解复用、mp4 复用及必要的解析器/比特流过滤器)。
+  完整构建脚本见本仓库 scripts/build-min-ffmpeg.sh。
 
 与本软件的关系
 --------------
 本软件(tsmerge)通过启动独立进程的方式调用 ffmpeg,并非静态/动态链接,
-因此二者是"聚合"关系而非派生作品。FFmpeg 的授权仅约束其自身二进制的再分发,
-不影响 tsmerge 本体的授权。
+二者是"聚合"关系而非派生作品。FFmpeg 的授权仅约束其自身二进制的再分发。
 
-FFmpeg 的 GPL/LGPL 许可证全文见:https://www.gnu.org/licenses/
+LGPL / GPL 许可证全文见:https://www.gnu.org/licenses/

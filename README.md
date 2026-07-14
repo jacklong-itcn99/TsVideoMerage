@@ -83,11 +83,14 @@ git tag -a v0.2.0 -m "发布说明" && git push origin v0.2.0
 
 ### 关于内置 ffmpeg
 
-发行包三端都**内置了 ffmpeg**(放在程序同目录 / `.app` 内),转 mp4 开箱即用,无需另装。
-内置的是来自 [ffmpeg-static](https://github.com/eugeneware/ffmpeg-static) 的 GPL 静态构建,
-许可与源码获取途径见包内 `THIRD-PARTY-ffmpeg.txt`。代价是发行包体积约增大到 ~100MB。
+发行包三端都**内置了 ffmpeg**(Windows 编进 exe、macOS 装在 `.app` 内、Linux 随 tar),转 mp4 开箱即用。
 
-从**源码本地构建**(`build-*.sh`)不会带 ffmpeg——此时程序会回落到系统 PATH 的 ffmpeg,
+内置的不是现成的全功能包,而是 CI 里**从官方源码现编的"极简 ffmpeg"**:只保留 TS→MP4 无损转封装
+(`-c copy`)所需的 mpegts 解复用 + mp4 复用 + 少量解析器/比特流过滤器,砍掉全部编解码器。
+因此它只有 **~2MB(压缩后 <1MB)**,且是 **LGPL**(禁用了 x264/x265 等 GPL 组件)。
+构建配方见 [scripts/build-min-ffmpeg.sh](scripts/build-min-ffmpeg.sh),许可见 `THIRD-PARTY-ffmpeg.txt`。
+
+从**源码本地构建**(`build-*.sh`)默认不带 ffmpeg——此时程序回落到系统 PATH 的 ffmpeg,
 自己 `brew/apt install ffmpeg` 或把 `ffmpeg` 放到可执行文件旁即可。
 
 ### 运行测试

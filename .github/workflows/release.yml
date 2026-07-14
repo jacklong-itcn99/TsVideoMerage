@@ -1,8 +1,6 @@
-# 一次打 v* 标签,自动构建 Windows / macOS / Linux 三端包(均内置 ffmpeg),并创建 GitHub Release。
-# 也可在 Actions 页面手动运行(workflow_dispatch)只出三端产物、不发 Release。
-#
-# ffmpeg 来源:Windows/Linux 用 BtbN 静态构建;macOS 用 ffmpeg-static(BtbN 无 mac)。
-# 每个能执行的平台都在打包前做冒烟测试:内置 ffmpeg 必须能真跑转封装,否则构建失败。
+# 一次打 v* 标签,自动构建 Windows / macOS / Linux 三端包,并创建 GitHub Release。
+# 三端都内置一个"极简 ffmpeg"(从官方源码现编,只保留 TS→MP4 无损转封装所需,约 2MB,LGPL)。
+# 每个能执行的平台打包前用 testdata/sample.ts 做真实转封装冒烟测试,坏了就让构建失败。
 name: release
 
 on:
@@ -13,12 +11,8 @@ on:
 permissions:
   contents: write
 
-env:
-  BTBN_BASE: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest
-  FFSTATIC_BASE: https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1
-
 jobs:
-  # ---------- Windows:mingw 交叉编译,内置 BtbN ffmpeg,打成 zip ----------
+  # ---------- Windows:mingw 交叉编译,ffmpeg 编入单文件 exe ----------
   windows:
     runs-on: ubuntu-latest
     steps:
@@ -26,8 +20,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.24"
-      - name: 安装 mingw 交叉编译器
+      - name: 安装 mingw
         run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
+      - name: 编译极简 ffmpeg(Windows)
+        run: bash scripts/build-min-ffmpeg.sh windows ffmpeg.exe
       - name: 内置 ffmpeg 并编译成单文件 exe
         env:
           CGO_ENABLED: "1"
@@ -35,20 +31,17 @@ jobs:
           GOARCH: amd64
           CC: x86_64-w64-mingw32-gcc
         run: |
-          # 取 ffmpeg.exe,gzip 后放到 embed 目录,-tags embedffmpeg 把它编进单个 exe
-          curl -fL -o ff.zip "${BTBN_BASE}/ffmpeg-master-latest-win64-gpl.zip"
-          unzip -q ff.zip
           mkdir -p merger/ffmpeg-bin
-          gzip -c "$(find . -name ffmpeg.exe -path '*/bin/*' | head -1)" > merger/ffmpeg-bin/ffmpeg.exe.gz
+          gzip -c ffmpeg.exe > merger/ffmpeg-bin/ffmpeg.exe.gz
           go build -tags embedffmpeg -ldflags "-H windowsgui -s -w" -o tsmerge-windows-amd64.exe .
           ls -lh tsmerge-windows-amd64.exe
       - uses: actions/upload-artifact@v4
         with:
           name: windows
           path: tsmerge-windows-amd64.exe
-          retention-days: 1 # 仅供同次运行的 release 汇总用,次日自动清理
+          retention-days: 1
 
-  # ---------- macOS:通用二进制 + 通用 ffmpeg 装进 .app,打成 .dmg ----------
+  # ---------- macOS:通用二进制 + 通用极简 ffmpeg 装进 .app,打成 .dmg ----------
   macos:
     runs-on: macos-14
     steps:
@@ -61,18 +54,17 @@ jobs:
           CGO_ENABLED=1 GOARCH=arm64 go build -ldflags "-s -w" -o tsmerge-arm64 .
           CGO_ENABLED=1 GOARCH=amd64 go build -ldflags "-s -w" -o tsmerge-amd64 .
           lipo -create -output tsmerge tsmerge-arm64 tsmerge-amd64
-      - name: 下载并合成通用 ffmpeg
+      - name: 编译极简 ffmpeg(通用)
         run: |
-          curl -fL -o ff-arm64 "${FFSTATIC_BASE}/ffmpeg-darwin-arm64"
-          curl -fL -o ff-x64   "${FFSTATIC_BASE}/ffmpeg-darwin-x64"
-          lipo -create -output ffmpeg ff-arm64 ff-x64
+          bash scripts/build-min-ffmpeg.sh macos-arm64 ffmpeg-arm64
+          bash scripts/build-min-ffmpeg.sh macos-x64   ffmpeg-x64
+          lipo -create -output ffmpeg ffmpeg-arm64 ffmpeg-x64
           chmod +x ffmpeg
           file ffmpeg
-      - name: 冒烟测试内置 ffmpeg(转封装必须成功)
+      - name: 冒烟测试(内置 ffmpeg 必须能转封装)
         run: |
-          ./ffmpeg -y -f lavfi -i testsrc=duration=1:size=160x120:rate=10 -f mpegts smoke.ts -loglevel error
-          ./ffmpeg -y -i smoke.ts -c copy -movflags +faststart smoke.mp4 -loglevel error
-          test -s smoke.mp4 && echo "✓ mac 内置 ffmpeg 可转封装"
+          ./ffmpeg -y -i testdata/sample.ts -c copy -movflags +faststart smoke.mp4 -loglevel error
+          test -s smoke.mp4 && echo "✓ mac 极简 ffmpeg 可转封装"
       - name: 打包 .app(内置 ffmpeg)
         run: |
           go install fyne.io/tools/cmd/fyne@latest
@@ -94,7 +86,7 @@ jobs:
           path: TSMerge-macos-universal.dmg
           retention-days: 1
 
-  # ---------- Linux:CGO 原生编译,内置 BtbN ffmpeg,注入 tar ----------
+  # ---------- Linux:CGO 原生编译,极简 ffmpeg 注入 tar ----------
   linux:
     runs-on: ubuntu-latest
     steps:
@@ -103,20 +95,14 @@ jobs:
         with:
           go-version: "1.24"
       - name: 安装 GUI 依赖
-        # glfw 3.4 在 Linux 上同时编译 X11 + Wayland 后端,两套 dev 头文件都要
         run: |
           sudo apt-get update
           sudo apt-get install -y libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev
-      - name: 取 ffmpeg 并冒烟测试
+      - name: 编译极简 ffmpeg 并冒烟测试
         run: |
-          curl -fL -o ff.tar.xz "${BTBN_BASE}/ffmpeg-master-latest-linux64-gpl.tar.xz"
-          mkdir ffdir && tar xJf ff.tar.xz -C ffdir
-          cp "$(find ffdir -name ffmpeg -path '*/bin/*' | head -1)" ffmpeg
-          chmod +x ffmpeg
-          rm -rf ff.tar.xz ffdir   # 清掉下载包,免得后面 *.tar.xz 通配到它
-          ./ffmpeg -y -f lavfi -i testsrc=duration=1:size=160x120:rate=10 -f mpegts smoke.ts -loglevel error
-          ./ffmpeg -y -i smoke.ts -c copy -movflags +faststart smoke.mp4 -loglevel error
-          test -s smoke.mp4 && echo "✓ linux 内置 ffmpeg 可转封装"
+          bash scripts/build-min-ffmpeg.sh linux ffmpeg
+          ./ffmpeg -y -i testdata/sample.ts -c copy -movflags +faststart smoke.mp4 -loglevel error
+          test -s smoke.mp4 && echo "✓ linux 极简 ffmpeg 可转封装"
       - name: fyne 打包并注入 ffmpeg
         run: |
           go install fyne.io/tools/cmd/fyne@latest
@@ -160,4 +146,4 @@ jobs:
             | Linux 64 位 | `tsmerge-linux-amd64.tar.xz` |
 
             macOS 未签名,首次打开右键→打开,或 `xattr -cr TSMerge.app`。
-            内置 ffmpeg 为 GPL 构建;许可与源码见仓库 `THIRD-PARTY-ffmpeg.txt`(mac/Linux 包内亦附)。
+            内置的是从源码现编的极简 ffmpeg(约 2MB,LGPL,仅保留无损转封装);详见 `THIRD-PARTY-ffmpeg.txt`。
