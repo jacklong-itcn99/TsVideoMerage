@@ -74,13 +74,16 @@ jobs:
         with:
           go-version: "1.24"
       - name: 安装 GUI 依赖
-        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev
+        # glfw 3.4 在 Linux 上同时编译 X11 + Wayland 后端,两套 dev 头文件都要
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev xorg-dev libwayland-dev libxkbcommon-dev
       - name: fyne 打包 Linux
         run: |
           go install fyne.io/tools/cmd/fyne@latest
           "$(go env GOPATH)/bin/fyne" package -os linux \
             --name TSMerge --app-id com.example.tsmerge --icon icon.png
-          mv TSMerge.tar.xz tsmerge-linux-amd64.tar.xz
+          mv ./*.tar.xz tsmerge-linux-amd64.tar.xz
       - uses: actions/upload-artifact@v4
         with:
           name: linux
