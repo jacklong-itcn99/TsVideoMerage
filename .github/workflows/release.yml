@@ -112,6 +112,7 @@ jobs:
           mkdir ffdir && tar xJf ff.tar.xz -C ffdir
           cp "$(find ffdir -name ffmpeg -path '*/bin/*' | head -1)" ffmpeg
           chmod +x ffmpeg
+          rm -rf ff.tar.xz ffdir   # 清掉下载包,免得后面 *.tar.xz 通配到它
           ./ffmpeg -y -f lavfi -i testsrc=duration=1:size=160x120:rate=10 -f mpegts smoke.ts -loglevel error
           ./ffmpeg -y -i smoke.ts -c copy -movflags +faststart smoke.mp4 -loglevel error
           test -s smoke.mp4 && echo "✓ linux 内置 ffmpeg 可转封装"
