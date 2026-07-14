@@ -1,0 +1,11 @@
+# 构建产物
+/tsmerge
+/tsmerge.exe
+/tsmerge-arm64
+/tsmerge-amd64
+/TSMerge.app/
+*.zip
+
+# 系统/临时
+.DS_Store
+*.out
