@@ -50,45 +50,33 @@ TSMERGE_PREVIEW=/tmp/preview.png go test ./ui/ -run TestRenderPreview
 
 ## 构建
 
-### 交叉编译成 Windows .exe(在 Linux/WSL 上)
+### 一键三端发布(推荐)—— 打个标签就行
+
+仓库带了统一的发布流水线 [.github/workflows/release.yml](.github/workflows/release.yml)。
+**推一个 `v*` 标签**,GitHub Actions 会并行构建三端并自动创建 Release 挂上产物:
 
 ```bash
-sudo apt-get install -y gcc-mingw-w64-x86-64   # 一次性安装交叉编译器
-./build-windows.sh                             # 生成 tsmerge.exe
+git tag -a v0.2.0 -m "发布说明" && git push origin v0.2.0
 ```
 
-`-H windowsgui` 让程序在 Windows 上以纯 GUI 启动(不弹黑色控制台)。
+| 平台 | 产物 | 怎么构建的 |
+|---|---|---|
+| Windows 64 位 | `tsmerge-windows-amd64.exe` | Linux runner + mingw 交叉编译 |
+| macOS(通用) | `TSMerge-macos-universal.dmg` | macOS runner,arm64+amd64 合并,打 .dmg |
+| Linux 64 位 | `tsmerge-linux-amd64.tar.xz` | Linux runner,fyne 打包 |
 
-### 构建 macOS 版
+构建完在仓库 **Releases** 页面直接下载。也可在 Actions 页面手动运行(只出产物、不发 Release)。
 
-⚠ Fyne 的 macOS 版**必须在 macOS 上构建**——它要开 CGO 链接 Cocoa/OpenGL 框架,
-依赖 Apple 的 macOS SDK,而该 SDK 只允许在苹果硬件上使用,**无法从 Linux/Windows 交叉编译**。
-`merger`、`ui` 两层是跨平台纯 Go,已验证可为 darwin 编译;只有 app/GL 驱动那层需要 Mac。
+> ⚠ Fyne 的 macOS/Linux 版必须在对应系统上构建(要 CGO + 系统框架),**无法从别的系统交叉编译**;
+> 只有 Windows 版能用 mingw 交叉编。这也是用云端 CI 的原因。
+> macOS 未签名,首次打开右键→「打开」或 `xattr -cr TSMerge.app`;转 mp4 用 `brew install ffmpeg`。
 
-有两条路:
-
-**A. 有 Mac —— 直接构建(推荐)**
+### 本地手动构建(单平台)
 
 ```bash
-./build-macos.sh
+./build-windows.sh    # 在 Linux/WSL 上交叉编译出 tsmerge.exe(需 gcc-mingw-w64-x86-64)
+./build-macos.sh      # 在 macOS 上构建通用二进制 + TSMerge.app(需 fyne CLI)
 ```
-
-产出通用二进制 `tsmerge`(Apple Silicon + Intel),并在装了 fyne CLI 时打包成 `TSMerge.app`:
-
-```bash
-go install fyne.io/tools/cmd/fyne@latest   # 一次性安装打包器
-./build-macos.sh
-```
-
-**B. 没有 Mac —— 用 GitHub Actions 云端构建**
-
-把项目推到 GitHub 后,到 Actions 页面手动运行 `build-macos` 工作流(或推一个 `v*` 标签),
-它会在云端 macOS 机器上编译并把 `TSMerge.app` 作为产物供下载。工作流见
-[.github/workflows/build-macos.yml](.github/workflows/build-macos.yml)。
-
-> 未签名的 `.app` 首次打开会被 Gatekeeper 拦下。右键点图标 →「打开」,
-> 或在终端执行 `xattr -cr TSMerge.app` 解除隔离标记即可。
-> macOS 上启用「转成 MP4」同理:`brew install ffmpeg`,或把 `ffmpeg` 放到 .app 旁。
 
 ### 在 Windows 上启用 MP4 转换
 
